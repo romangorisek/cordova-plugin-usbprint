@@ -162,7 +162,7 @@ public class Printer {
             send = msg.getBytes();
         }
         sendByte(send);
-        sendByte(new byte[] { 13, 10 });
+        // sendByte(new byte[] { 13, 10 });
     }
 
     public void sendByte(byte[] bits) {

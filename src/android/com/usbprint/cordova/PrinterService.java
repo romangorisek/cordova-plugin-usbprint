@@ -88,8 +88,8 @@ public class PrinterService extends CordovaPlugin {
                     UsbDevice dev = (UsbDevice) intent.getParcelableExtra("device");
                     if (dev != null) {
                         String printer_name = constructPrinterName(dev);
-                        Toast.makeText(cordova.getActivity().getApplicationContext(),
-                                "Printer " + printer_name + " got disconnected", Toast.LENGTH_SHORT).show();
+                        // Toast.makeText(cordova.getActivity().getApplicationContext(),
+                        //         "Printer " + printer_name + " got disconnected", Toast.LENGTH_SHORT).show();
                         Printer p = printers.get(printer_name);
                         if (p != null) {
                             p.close();
@@ -267,12 +267,12 @@ public class PrinterService extends CordovaPlugin {
         Printer device = printers.get(printer_name);
         if (device != null) {
             if (device.isPaperAvailable()) {
-                device.sendMsg(msg, "GBK");
+                device.sendMsg(msg, "CP852");
                 callbackContext.success("Printed");
             } else {
-                Toast.makeText(cordova.getActivity().getApplicationContext(), "Paper roll is empty in printer "
-                        + printer_name + ". Please place some paper before printing any data.", Toast.LENGTH_SHORT)
-                        .show();
+                // Toast.makeText(cordova.getActivity().getApplicationContext(), "Paper roll is empty in printer "
+                //         + printer_name + ". Please place some paper before printing any data.", Toast.LENGTH_SHORT)
+                //         .show();
                 callbackContext.error("Paper roll is empty");
             }
         } else {

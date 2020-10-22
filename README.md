@@ -1,3 +1,8 @@
+# fork changes
+  - encoding
+  - no native toasts
+  - no new line after sendMsg
+
 # cordova-plugin-usbprint
 This Plugin allows you to print documents via USB printer.
 
