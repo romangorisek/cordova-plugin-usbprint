@@ -2,6 +2,9 @@ module.exports = {
     print: function(printername, msg, successCallback, failureCallback) {
         cordova.exec(successCallback, failureCallback, "PrinterService", "print", [printername, msg]);
     },
+    printBase64: function(printername, base64, successCallback, failureCallback) {
+        cordova.exec(successCallback, failureCallback, "PrinterService", "printBase64", [printername, base64]);
+    },
     sendCommand: function(printername, command, successCallback, failureCallback) {
         cordova.exec(successCallback, failureCallback, "PrinterService", "sendCommand", [printername, command]);
     },

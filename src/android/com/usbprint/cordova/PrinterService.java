@@ -12,6 +12,11 @@ import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
 import android.widget.Toast;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Matrix;
+import android.graphics.Canvas;
+import android.graphics.Paint;
 
 import com.usbprint.cordova.Printer;
 
@@ -278,6 +283,202 @@ public class PrinterService extends CordovaPlugin {
         } else {
             callbackContext.error("No Printer of specified name is connected");
         }
+    }
+
+    private void printBase64(String printer_name, String msg, final CallbackContext callbackContext) {
+        Printer device = printers.get(printer_name);
+        if (device != null) {
+            if (device.isPaperAvailable()) {
+              try {
+                final String encodedString = msg;
+                final String pureBase64Encoded = encodedString.substring(encodedString.indexOf(",") + 1);
+                final byte[] decodedBytes = Base64.decode(pureBase64Encoded, Base64.DEFAULT);
+
+                Bitmap decodedBitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.length);
+
+                bitmap = decodedBitmap;
+                int mWidth = bitmap.getWidth();
+                int mHeight = bitmap.getHeight();
+
+                bitmap = resizeImage(bitmap, 48 * 8, mHeight);
+
+                byte[] bt = decodeBitmapBase64(bitmap);
+
+                // mmOutputStream.write(ESC_ALIGN_CENTER);
+                device.sendByte(command);
+
+                callbackContext.success("Printed");
+              } catch (Exception e) {
+                String errMsg = e.getMessage();
+                Log.e(TAG, errMsg);
+                callbackContext.error(errMsg);
+              }
+            } else {
+                callbackContext.error("Paper roll is empty");
+            }
+        } else {
+            callbackContext.error("No Printer of specified name is connected");
+        }
+    }
+
+    private static Bitmap resizeImage(Bitmap bitmap, int w, int h) {
+        Bitmap BitmapOrg = bitmap;
+        int width = BitmapOrg.getWidth();
+        int height = BitmapOrg.getHeight();
+
+        if (width > w) {
+            float scaleWidth = ((float) w) / width;
+            float scaleHeight = ((float) h) / height + 24;
+            Matrix matrix = new Matrix();
+            matrix.postScale(scaleWidth, scaleWidth);
+            Bitmap resizedBitmap = Bitmap.createBitmap(BitmapOrg, 0, 0, width, height, matrix, true);
+            return resizedBitmap;
+        } else {
+            Bitmap resizedBitmap = Bitmap.createBitmap(w, height + 24, Config.RGB_565);
+            Canvas canvas = new Canvas(resizedBitmap);
+            Paint paint = new Paint();
+            canvas.drawColor(Color.WHITE);
+            canvas.drawBitmap(bitmap, (w - width) / 2, 0, paint);
+            return resizedBitmap;
+        }
+    }
+
+    public static byte[] decodeBitmapBase64(Bitmap bmp) {
+        int bmpWidth = bmp.getWidth();
+        int bmpHeight = bmp.getHeight();
+        List<String> list = new ArrayList<String>(); // binaryString list
+        StringBuffer sb;
+        int bitLen = bmpWidth / 8;
+        int zeroCount = bmpWidth % 8;
+        String zeroStr = "";
+        if (zeroCount > 0) {
+            bitLen = bmpWidth / 8 + 1;
+            for (int i = 0; i < (8 - zeroCount); i++) {
+                zeroStr = zeroStr + "0";
+            }
+        }
+
+        for (int i = 0; i < bmpHeight; i++) {
+            sb = new StringBuffer();
+            for (int j = 0; j < bmpWidth; j++) {
+                int color = bmp.getPixel(j, i);
+
+                int r = (color >> 16) & 0xff;
+                int g = (color >> 8) & 0xff;
+                int b = color & 0xff;
+                // if color close to white，bit='0', else bit='1'
+                if (r > 160 && g > 160 && b > 160) {
+                    sb.append("0");
+                } else {
+                    sb.append("1");
+                }
+            }
+            if (zeroCount > 0) {
+                sb.append(zeroStr);
+            }
+            list.add(sb.toString());
+        }
+
+        List<String> bmpHexList = binaryListToHexStringList(list);
+        String commandHexString = "1D763000";
+
+        // construct xL and xH
+        // there are 8 pixels per byte. In case of modulo: add 1 to compensate.
+        bmpWidth = bmpWidth % 8 == 0 ? bmpWidth / 8 : (bmpWidth / 8 + 1);
+        int xL = bmpWidth % 256;
+        int xH = (bmpWidth - xL) / 256;
+
+        String xLHex = Integer.toHexString(xL);
+        String xHHex = Integer.toHexString(xH);
+        if (xLHex.length() == 1) {
+            xLHex = "0" + xLHex;
+        }
+        if (xHHex.length() == 1) {
+            xHHex = "0" + xHHex;
+        }
+        String widthHexString = xLHex + xHHex;
+
+        // construct yL and yH
+        int yL = bmpHeight % 256;
+        int yH = (bmpHeight - yL) / 256;
+
+        String yLHex = Integer.toHexString(yL);
+        String yHHex = Integer.toHexString(yH);
+        if (yLHex.length() == 1) {
+            yLHex = "0" + yLHex;
+        }
+        if (yHHex.length() == 1) {
+            yHHex = "0" + yHHex;
+        }
+        String heightHexString = yLHex + yHHex;
+
+        List<String> commandList = new ArrayList<String>();
+        commandList.add(commandHexString + widthHexString + heightHexString);
+        commandList.addAll(bmpHexList);
+
+        return hexList2Byte(commandList);
+    }
+
+    public static List<String> binaryListToHexStringList(List<String> list) {
+        List<String> hexList = new ArrayList<String>();
+        for (String binaryStr : list) {
+            StringBuffer sb = new StringBuffer();
+            for (int i = 0; i < binaryStr.length(); i += 8) {
+                String str = binaryStr.substring(i, i + 8);
+
+                String hexString = myBinaryStrToHexString(str);
+                sb.append(hexString);
+            }
+            hexList.add(sb.toString());
+        }
+        return hexList;
+    }
+
+    public static byte[] hexList2Byte(List<String> list) {
+        List<byte[]> commandList = new ArrayList<byte[]>();
+
+        for (String hexStr : list) {
+            commandList.add(hexStringToBytes(hexStr));
+        }
+        byte[] bytes = sysCopy(commandList);
+        return bytes;
+    }
+
+    public static String myBinaryStrToHexString(String binaryStr) {
+        String hex = "";
+        String f4 = binaryStr.substring(0, 4);
+        String b4 = binaryStr.substring(4, 8);
+        for (int i = 0; i < binaryArray.length; i++) {
+            if (f4.equals(binaryArray[i])) {
+                hex += hexStr.substring(i, i + 1);
+            }
+        }
+        for (int i = 0; i < binaryArray.length; i++) {
+            if (b4.equals(binaryArray[i])) {
+                hex += hexStr.substring(i, i + 1);
+            }
+        }
+
+        return hex;
+    }
+
+    public static byte[] hexStringToBytes(String hexString) {
+        if (hexString == null || hexString.equals("")) {
+            return null;
+        }
+        hexString = hexString.toUpperCase();
+        int length = hexString.length() / 2;
+        char[] hexChars = hexString.toCharArray();
+        byte[] d = new byte[length];
+        for (int i = 0; i < length; i++) {
+            int pos = i * 2;
+            d[i] = (byte) (charToByte(hexChars[pos]) << 4 | charToByte(hexChars[pos + 1]));
+        }
+        return d;
+    }
+
+    private static byte charToByte(char c) {
+        return (byte) "0123456789ABCDEF".indexOf(c);
     }
 
     private synchronized void getPermission(UsbDevice dev, final CallbackContext callbackContext) {
