@@ -47,6 +47,7 @@ public class PrinterService extends CordovaPlugin {
     private static Map<String, Printer> printers = new HashMap<String, Printer>();
     private UsbManager usbManager;
     private Context applicationContext;
+    Bitmap bitmap;
 
     @Override
     protected void pluginInitialize() {
