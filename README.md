@@ -2,6 +2,7 @@
   - encoding
   - no native toasts
   - no new line after sendMsg
+  - print base 64 img
 
 # cordova-plugin-usbprint
 This Plugin allows you to print documents via USB printer.

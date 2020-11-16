@@ -17,6 +17,7 @@ import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
 import android.graphics.Canvas;
 import android.graphics.Paint;
+import android.util.Base64;
 
 import com.usbprint.cordova.Printer;
 
@@ -156,6 +157,11 @@ public class PrinterService extends CordovaPlugin {
             String msg = args.getString(1);
             print(printer_name, msg, callbackContext);
             return true;
+        } else if (action.equals("printBase64")) {
+            String printer_name = args.getString(0);
+            String msg = args.getString(1);
+            printBase64(printer_name, msg, callbackContext);
+            return true;
         } else if (action.equals("sendCommand")) {
             String printer_name = args.getString(0);
             byte[] data = args.getArrayBuffer(1);
@@ -286,39 +292,42 @@ public class PrinterService extends CordovaPlugin {
     }
 
     private void printBase64(String printer_name, String msg, final CallbackContext callbackContext) {
-        Printer device = printers.get(printer_name);
-        if (device != null) {
-            if (device.isPaperAvailable()) {
-              try {
-                final String encodedString = msg;
-                final String pureBase64Encoded = encodedString.substring(encodedString.indexOf(",") + 1);
-                final byte[] decodedBytes = Base64.decode(pureBase64Encoded, Base64.DEFAULT);
+      Toast.makeText(cordova.getActivity().getApplicationContext(), "Start base64", Toast.LENGTH_SHORT).show();
+      Printer device = printers.get(printer_name);
+      if (device != null) {
+          if (device.isPaperAvailable()) {
+            try {
+              final String encodedString = msg;
+              final String pureBase64Encoded = encodedString.substring(encodedString.indexOf(",") + 1);
+              final byte[] decodedBytes = Base64.decode(pureBase64Encoded, Base64.DEFAULT);
 
-                Bitmap decodedBitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.length);
+              Toast.makeText(cordova.getActivity().getApplicationContext(), "decodedBytes: " + decodedBytes.length , Toast.LENGTH_SHORT).show();
 
-                bitmap = decodedBitmap;
-                int mWidth = bitmap.getWidth();
-                int mHeight = bitmap.getHeight();
+              Bitmap decodedBitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.length);
 
-                bitmap = resizeImage(bitmap, 48 * 8, mHeight);
+              bitmap = decodedBitmap;
+              int mWidth = bitmap.getWidth();
+              int mHeight = bitmap.getHeight();
 
-                byte[] bt = decodeBitmapBase64(bitmap);
+              bitmap = resizeImage(bitmap, 48 * 8, mHeight);
 
-                // mmOutputStream.write(ESC_ALIGN_CENTER);
-                device.sendByte(command);
+              byte[] bt = decodeBitmapBase64(bitmap);
 
-                callbackContext.success("Printed");
-              } catch (Exception e) {
-                String errMsg = e.getMessage();
-                Log.e(TAG, errMsg);
-                callbackContext.error(errMsg);
-              }
-            } else {
-                callbackContext.error("Paper roll is empty");
+              // mmOutputStream.write(ESC_ALIGN_CENTER);
+              device.sendByte(command);
+
+              callbackContext.success("Printed");
+            } catch (Exception e) {
+              String errMsg = e.getMessage();
+              Log.e(TAG, errMsg);
+              callbackContext.error(errMsg);
             }
-        } else {
-            callbackContext.error("No Printer of specified name is connected");
-        }
+          } else {
+              callbackContext.error("Paper roll is empty");
+          }
+      } else {
+          callbackContext.error("No Printer of specified name is connected");
+      }
     }
 
     private static Bitmap resizeImage(Bitmap bitmap, int w, int h) {
