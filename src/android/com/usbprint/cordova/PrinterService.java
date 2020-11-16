@@ -13,10 +13,12 @@ import android.os.Message;
 import android.util.Log;
 import android.widget.Toast;
 import android.graphics.Bitmap;
+import android.graphics.Bitmap.Config;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
 import android.graphics.Canvas;
 import android.graphics.Paint;
+import android.graphics.Color;
 import android.util.Base64;
 
 import com.usbprint.cordova.Printer;
@@ -315,7 +317,7 @@ public class PrinterService extends CordovaPlugin {
               byte[] bt = decodeBitmapBase64(bitmap);
 
               // mmOutputStream.write(ESC_ALIGN_CENTER);
-              device.sendByte(command);
+              device.sendByte(bt);
 
               callbackContext.success("Printed");
             } catch (Exception e) {
@@ -490,6 +492,25 @@ public class PrinterService extends CordovaPlugin {
     private static byte charToByte(char c) {
         return (byte) "0123456789ABCDEF".indexOf(c);
     }
+
+    public static byte[] sysCopy(List<byte[]> srcArrays) {
+        int len = 0;
+        for (byte[] srcArray : srcArrays) {
+            len += srcArray.length;
+        }
+        byte[] destArray = new byte[len];
+        int destLen = 0;
+        for (byte[] srcArray : srcArrays) {
+            System.arraycopy(srcArray, 0, destArray, destLen, srcArray.length);
+            destLen += srcArray.length;
+        }
+        return destArray;
+    }
+
+    private static String hexStr = "0123456789ABCDEF";
+
+    private static String[] binaryArray = { "0000", "0001", "0010", "0011", "0100", "0101", "0110", "0111", "1000",
+            "1001", "1010", "1011", "1100", "1101", "1110", "1111" };
 
     private synchronized void getPermission(UsbDevice dev, final CallbackContext callbackContext) {
         if (dev == null) {
